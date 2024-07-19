@@ -14,6 +14,7 @@ This project aims to leverage the powerful language understanding capabilities o
 - Install react libraries --> `npm install`
 - Run the Django server --> `python manage.py runserver`
 - Run the React frontend server --> `npm start`
+- Create Access Token from Hugging Face and Paste this token as value to HUGGING_FACE variable in settings.py inside metacode folder.
 - Open the browser and open http://localhost:3000
 
   

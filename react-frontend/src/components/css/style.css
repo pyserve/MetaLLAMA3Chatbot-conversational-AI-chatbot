@@ -26,9 +26,15 @@
     object-fit: contain;
 }
 
+.reply-image{
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+}
+
 .form-inputs{
     border: 1px solid lightgray;
-    border-radius: 27px 27px;
+    border-radius: 25px 25px;
 }
 
 .w-80{
@@ -37,8 +43,4 @@
 
 .vh-75{
     height: 75vh;
-}
-
-.overflow-auto{
-    scrollbar-width: none;
 }

@@ -21,23 +21,17 @@ class HomeView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            query = data.get('text', '')
+            messages = data.get('messages', '')
             reply = ''
             for message in client.chat_completion(
-                    messages=[query],
-                    max_tokens=100,
+                    messages=messages,
+                    max_tokens=1024,
                     stream=True,
                 ):
                 reply += message.choices[0].delta.content + ""
             return JsonResponse({"role": "assistant", "content": reply})
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-    
-    def options(self, request):
-        response = JsonResponse({'message': 'Allowed Access'})
-        response['Access-Control-Allow-Origin'] = '*'
-        response['Access-Control-Allow-Headers'] = 'Content-Type, X-CSRFToken'
-        return response
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):

@@ -22,12 +22,18 @@ const AuthContextProvider = ({children}) => {
         setAuth(response);
     }
 
+    const logoutUser = () => {
+        setAuth({
+            user: null
+        })
+    }
+
     const toggleTheme = () => {
         setTheme(theme => theme === "light" ? "dark" : "light");
     }
 
     return(
-        <AuthContext.Provider value={{ auth, loginUser, theme, toggleTheme}}>
+        <AuthContext.Provider value={{ auth, loginUser, logoutUser, theme, toggleTheme}}>
             {children}
         </AuthContext.Provider>
     )

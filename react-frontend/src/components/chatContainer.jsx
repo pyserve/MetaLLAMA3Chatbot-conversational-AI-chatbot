@@ -15,6 +15,7 @@ const ChatContainer = () => {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
+    const DEEPGRAM_API_KEY = "2ad747b7394a1ceeb64a9ee57c4581099f13d427";
 
     useEffect(() => {
         if(auth.user){
@@ -25,6 +26,20 @@ const ChatContainer = () => {
             })
         }
     }, [auth]);
+
+    useEffect(() => {
+        if (message && message.trim() !== '') {
+          setDisableBtn(false);
+        } else {
+          setDisableBtn(true);
+        }
+    }, [message]);
+    
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [chats]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -49,12 +64,6 @@ const ChatContainer = () => {
         }
     }
 
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [chats]);
-
     const getMicrophoneAccess = async() => {
         try{
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true});
@@ -78,8 +87,9 @@ const ChatContainer = () => {
             };
 
             mediaRecorderRef.current.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 setAudioBlob(audioBlob);
+                uploadAudio(audioBlob);
             };
 
             mediaRecorderRef.current.start();
@@ -96,11 +106,42 @@ const ChatContainer = () => {
             streamRef.current = null;
         }
         console.log("Recording stopped.");
-        console.log(URL.createObjectURL(audioBlob))
     }
 
-    // const formData = new FormData();
-    // formData.append('audio', audioBlob, 'recording.wav');
+    const uploadAudio = async (audio) => {
+        const arrayBuffer = await audio.arrayBuffer();
+        const response = await fetch('https://api.deepgram.com/v1/listen?language=en-GB', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'audio/webm',
+                'Authorization': `Token ${DEEPGRAM_API_KEY}`
+            },
+            body: arrayBuffer
+        });
+    
+        const result = await response.json();
+        if (result.results && result.results.channels && result.results.channels[0] && 
+            result.results.channels[0].alternatives && result.results.channels[0].alternatives[0]) {
+            const transcribe_result = result.results.channels[0].alternatives[0].transcript;
+            setMessage(transcribe_result);
+            console.log(transcribe_result)
+        }
+        setAudioBlob(null);
+    }
+
+    const handleUploadImage = async(e) => {
+        const file = e.target.files[0];
+        if(file){
+            const formData = new FormData();
+            formData.append('image', file);
+            const resp = await fetch("http://127.0.0.1:8000/image/",{
+                method: "POST",
+                body: formData
+            });
+            console.log(resp);
+        }
+    }
+
     return(
         <div className="container my-1">
             <div className="row justify-content-center">
@@ -163,49 +204,34 @@ const ChatContainer = () => {
                                     </div>
                                 </div>}
                             </div>
-                            
-                            {audioBlob && (
-                                <div className="d-flex align-items-center py-1">
-                                    <audio className="w-100 mx-2"
-                                        src={URL.createObjectURL(audioBlob)}
-                                        autoPlay controls  />
-                                    <button className="btn btn-primary mx-2" onClick={() => null}>Send</button>
-                                </div>
-                            )}
+
                             <div className={`${theme === "light" ? "bg-light" : ""} border-top p-3 rounded-0`}>
                                 <form onSubmit={handleSubmit} className="bg-white rounded-pill">
                                     <div className="d-flex align-items-center form-inputs">
                                         {
                                             isRecording ?
-                                            <button className="btn btn-light rounded-pill mx-1" type="button"
+                                            <button className="btn btn-light ms-2 me-1 border rounded-pill" type="button"
                                                 onClick={stopRecording}>
-                                                <span className="spinner-grow spinner-grow-sm" aria-hidden="true"></span>
-                                                <span className="visually-hidden" role="status">Loading...</span>
+                                                <span className="text-danger spinner-grow spinner-grow-sm" aria-hidden="true"></span>
                                             </button>
                                             :
-                                            <label className="btn bg-light rounded-pill mx-1"
+                                            <label className="btn btn-light ms-2 me-1 border rounded-pill"
                                                 onClick={isRecording ? stopRecording : startRecording}>
-                                                <i className="fa-solid fa-microphone-lines"></i>
+                                                <i className="px-1 fa-solid fa-microphone-lines"></i>
                                             </label>
                                         }
-                                        <label htmlFor="image" className="btn bg-light rounded-pill mx-1">
-                                            <i className="fa fa-image"></i>
+                                        <label htmlFor="image" className="btn btn-light mx-1 border rounded-pill">
+                                            <i className="fa-regular fa-images"></i>
                                         </label>
-                                        <input type="file" id="image" className="d-none" />
+                                        <input type="file" id="image" className="d-none" accept="image/*"
+                                            onChange={e => handleUploadImage(e)} />
                                         <input type="text" placeholder="what's on your mind!"
                                             className="form-control border-0 rounded-0 py-3"
                                             value={message}
-                                            onChange={e => {
-                                                if(e.target.value && e.target.value.trim() !== ''){
-                                                    setDisableBtn(false)
-                                                }else{
-                                                    setDisableBtn(true)
-                                                }
-                                                setMessage(e.target.value);
-                                            }} />
-                                        <button className="btn bg-light border-0 rounded-pill mx-1" type="submit"
+                                            onChange={e => setMessage(e.target.value)} />
+                                        <button className="btn btn-secondary rounded-pill ms-1 me-2" type="submit"
                                             disabled={disableBtn}>
-                                            <i className="text-dark fa-regular fa-paper-plane"></i>
+                                            <i className="p-1 fa-regular fa-paper-plane"></i>
                                         </button>
                                     </div>
                                 </form>
@@ -216,21 +242,11 @@ const ChatContainer = () => {
                                     <div className="card-body py-5 bg-dark text-light">
                                         <h5 className="card-title fs-3">Hey! What's up ?</h5>
                                         <p className="card-text">I'm Beaver chatbot. An intelligent chatbot from Beaver Intelligence Corp.</p>
-                                        <div className="spinner-grow text-primary" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
-                                        <div className="spinner-grow text-success" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
-                                        <div className="spinner-grow text-danger" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
-                                        <div className="spinner-grow text-warning" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
-                                        <div className="spinner-grow text-info" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
+                                        <div className="spinner-grow text-primary" role="status"> </div>
+                                        <div className="spinner-grow text-success" role="status"> </div>
+                                        <div className="spinner-grow text-danger" role="status"> </div>
+                                        <div className="spinner-grow text-warning" role="status"> </div>
+                                        <div className="spinner-grow text-info" role="status"> </div>
                                         <p className="mt-5 fs-5">What's on your mind ?</p>
                                         <p className="font-italic">Please go a head and write it over whatever it is!</p>
                                     </div>

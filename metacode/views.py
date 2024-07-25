@@ -9,12 +9,15 @@ from django.contrib.auth import authenticate, login, logout
 from .serializers import UserSerializer
 from huggingface_hub import InferenceClient
 from .settings import HUGGINGFACE_TOKEN
+import requests
 
 model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+image_model_name = "Salesforce/blip-image-captioning-base"
 client = InferenceClient(model=model_name, token=HUGGINGFACE_TOKEN)
+image_client = InferenceClient(model=image_model_name, token=HUGGINGFACE_TOKEN)
 
 @method_decorator(csrf_exempt, name='dispatch')
-class HomeView(View):
+class ChatView(View):
     def get(self, request):
         return JsonResponse({'message': 'Protected resource accessed'}, status=200)
     
@@ -32,6 +35,20 @@ class HomeView(View):
             return JsonResponse({"role": "assistant", "content": reply})
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AudioView(View):
+    def post(self, request):
+        print(request.FILES)
+        return JsonResponse({"error": "Audio processing went wrong!"}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ImageView(View):
+    def post(self, request):
+        image = request.FILES.get("image", None)
+        if image is not None:
+            return JsonResponse({"status": image}, status=200)
+        return JsonResponse({"error": "Image processing went wrong!"}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):

@@ -18,16 +18,17 @@ function App() {
       <BrowserRouter>
         <Navbar />
         <Routes>
+          {auth.user ?
             <>
               <Route path="*" Component={ChatContainer} />
             </>
-          {/* :
+          :
           <>
             <Route path="*" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </>
-          } */}
+          }
         </Routes>
       </BrowserRouter>
     </div>

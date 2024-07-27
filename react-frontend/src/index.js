@@ -5,7 +5,7 @@ import reportWebVitals from './reportWebVitals';
 import AuthContextProvider from './contexts/authContext';
 import ChatContextProvider from './contexts/chatContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.js';
+import 'bootstrap/dist/js/bootstrap.bundle.min';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

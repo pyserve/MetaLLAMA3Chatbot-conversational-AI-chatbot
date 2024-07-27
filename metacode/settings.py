@@ -26,6 +26,7 @@ SECRET_KEY = "django-insecure-u)(=0+gme_+9t4odxul-clw536w1c8tv*lttovv(zt0je(5o%^
 DEBUG = True
 
 HUGGINGFACE_TOKEN = "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"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 
 ALLOWED_HOSTS = ['*']
 

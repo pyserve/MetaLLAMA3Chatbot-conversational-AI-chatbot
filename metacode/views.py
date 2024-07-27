@@ -8,13 +8,15 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate, login, logout
 from .serializers import UserSerializer
 from huggingface_hub import InferenceClient
+from gradio_client import Client
 from .settings import HUGGINGFACE_TOKEN
 import requests
+import base64
 
 model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
 image_model_name = "Salesforce/blip-image-captioning-base"
 client = InferenceClient(model=model_name, token=HUGGINGFACE_TOKEN)
-image_client = InferenceClient(model=image_model_name, token=HUGGINGFACE_TOKEN)
+vqa_client = InferenceClient(model=image_model_name, token=HUGGINGFACE_TOKEN)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChatView(View):
@@ -46,9 +48,24 @@ class AudioView(View):
 class ImageView(View):
     def post(self, request):
         image = request.FILES.get("image", None)
+        question = request.POST.get("question", 'What is the main subject of the image?')
         if image is not None:
-            return JsonResponse({"status": image}, status=200)
-        return JsonResponse({"error": "Image processing went wrong!"}, status=500)
+            API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-vqa-base"
+            image=base64.b64encode(image.read()).decode('utf-8')
+            headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+            payload = {
+                "inputs": {
+                    "image": image,
+                    "question": question
+                }
+            }
+            response = requests.post(API_URL, headers=headers, json=payload)
+            if response.status_code == 200:
+                result = response.json()
+                reply = result[0]["answer"] if result[0] else 'Something went wrong!'
+                return JsonResponse({"role": "assistant", "content": reply}, status=200)
+            return JsonResponse({"role": "assistant", "content": response.text}, status=response.status_code)
+        return JsonResponse({"role": "assistant", "content": "Something went wrong!"}, status=503)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):

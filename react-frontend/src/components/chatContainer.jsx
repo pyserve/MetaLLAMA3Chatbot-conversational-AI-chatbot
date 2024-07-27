@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { AuthContext } from "../contexts/authContext";
 import { ChatContext } from "../contexts/chatContext";
 // import History from "./history";
+import { Modal } from 'bootstrap';
+import $ from 'jquery';
 
 const ChatContainer = () => {
     const { auth, theme } = useContext(AuthContext);
@@ -15,6 +17,10 @@ const ChatContainer = () => {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
+    const imageRef = useRef(null);
+    const modalRef = useRef(null);
+    const [imageSrc, setImageSrc] = useState(null);
+    const [modelImage, setModalImage] = useState(null);
     const DEEPGRAM_API_KEY = "2ad747b7394a1ceeb64a9ee57c4581099f13d427";
 
     useEffect(() => {
@@ -39,28 +45,46 @@ const ChatContainer = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [chats]);
+    }, [chats, imageSrc]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        let query = {role: "user", content: message}
+        let query = {
+            role: "user", 
+            content: message, 
+            image: imageRef.current.value ? URL.createObjectURL(imageRef.current.files[0]) : null,
+        }
         setMessage('');
         setDisableBtn(true);
         setChats(chats => [...chats, query]);
+        if(query.image){
+            const formData = new FormData();
+            formData.append('image', imageRef.current.files[0]);
+            formData.append('question', query.content);
+            clearImage();
+            const resp = await fetch("http://127.0.0.1:8000/image/",{
+                method: "POST",
+                body: formData
+            });
 
-        const resp = await fetch("http://127.0.0.1:8000", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                messages: [initialPrompt, ...chats, query],
-            })
-        });
-
-        if(resp.status === 200){
             const reply = await resp.json();
             setChats(chats => [...chats, reply]);
+        }
+        else{
+            const resp = await fetch("http://127.0.0.1:8000", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: [initialPrompt, ...chats, query],
+                })
+            });
+
+            if(resp.status === 200){
+                const reply = await resp.json();
+                setChats(chats => [...chats, reply]);
+            }
         }
     }
 
@@ -129,17 +153,31 @@ const ChatContainer = () => {
         setAudioBlob(null);
     }
 
-    const handleUploadImage = async(e) => {
+    const handleImageUpload = async(e) => {
         const file = e.target.files[0];
         if(file){
-            const formData = new FormData();
-            formData.append('image', file);
-            const resp = await fetch("http://127.0.0.1:8000/image/",{
-                method: "POST",
-                body: formData
-            });
-            console.log(resp);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImageSrc(e.target.result);
+            };
+            reader.readAsDataURL(file);
         }
+    }
+
+    const clearImage = () => {
+        setImageSrc(null);
+        if (imageRef.current) {
+          imageRef.current.value = null;
+        }
+    };
+
+    const openImagePreview = (index) => {
+        const result = chats.find((c, i) => i === index);
+        setModalImage(result.image);
+        const modal = new Modal(modalRef.current, {
+            keyboard: false
+        });
+        modal.show();
     }
 
     return(
@@ -149,20 +187,38 @@ const ChatContainer = () => {
                     <History />
                 </div> */}
                 <div className="col-md-8">
+                    <div className="modal fade" ref={modalRef} data-bs-backdrop="static" tabIndex="-1">
+                        <div className="modal-dialog">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h1 className="modal-title fs-5" id="imagePreviewLabel">Preview Image</h1>
+                                    <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div className="modal-body">
+                                    <img src={modelImage} alt="" className="w-100" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div className={`card border-0 shadow-lg`}>
                         <div className={`card-body p-0 bg-${theme === "light" ? "white": "secondary"} text-${theme === "light" ? "dark": "light"}`}>
-                            <div className="overflow-auto my-1 px-3" 
-                                style={{minHeight: '79vh', maxHeight: '79vh'}}
+                            <div className="overflow-auto my-1 px-3 d-flex flex-column-reverse" 
+                                style={{minHeight: '79vh', maxHeight: '79vh',}}
                                 ref={scrollRef}>
+                                <div className="d-flex flex-column">
                                 {chats.map((chat, idx) => {
                                     return(
                                         <div key={idx}>
                                             {chat.role === "user" &&
-                                            <div className="d-flex justify-content-end p-2 my-2">
+                                            <div className="d-flex justify-content-end p-2 my-1">
                                                 <div className="d-flex justify-content-end align-items-start w-80">
-                                                    <span className={`me-2 bg-${theme} p-3 rounded-pill`}>
-                                                        {chat.content}
-                                                    </span>
+                                                    <div className="text-end me-2">
+                                                        {chat.image && 
+                                                        <img src={chat.image} alt="" className="chat-image rounded py-1" type="button" onClick={() => openImagePreview(idx)}></img>}   
+                                                        <div className={`bg-custom-${theme}`}>
+                                                            {chat.content}
+                                                        </div>
+                                                    </div>
                                                     <span className="ms-1 fs-3">
                                                         <i className="fa-regular fa-circle-user"></i>
                                                     </span>
@@ -180,7 +236,14 @@ const ChatContainer = () => {
                                                             {chat.content}
                                                         </span>
                                                         <div className="my-1">
-                                                            <span type="button" className="me-2"><i className="fa-regular fa-clipboard"></i></span>
+                                                            <span type="button" className="me-2" onClick={e => {
+                                                                $(e.currentTarget).find("i").removeClass("fa-regular fa-clipboard").addClass("fa-solid fa-clipboard-checked");
+                                                                setTimeout(() => {
+                                                                    $(e.currentTarget).find("i").removeClass("fa-solid fa-clipboard-checked").addClass("fa-regular fa-clipboard");
+                                                                }, 2000);
+                                                            }}>
+                                                                <i className="fa-regular fa-clipboard"></i>
+                                                            </span>
                                                             <span type="button" className="mx-1"><i className="fa-solid fa-volume-high"></i></span>
                                                             <span type="button" className="mx-1"><i className="fa-regular fa-thumbs-down"></i></span>
                                                             {idx === chats.length - 1 &&
@@ -192,8 +255,10 @@ const ChatContainer = () => {
                                         </div>
                                     )
                                 })}
-                                {chats.filter(chat => chat.role === "user").length > chats.filter(chat => chat.role === "assistant").length &&
-                                <div className="d-flex justify-content-start my-3">
+                                
+                                {(chats.filter(chat => chat.role === "user").length > chats.filter(chat => chat.role === "assistant").length
+                                && chats.at(-1).role === "user") &&
+                                <div className="d-flex flex-column-reverse justify-content-start my-1">
                                     <div className="d-flex align-items-center bg-white p-2 rounded-pill">
                                         <div className="spinner-grow spinner-grow-sm text-danger mx-1" role="status">
                                         </div>
@@ -203,8 +268,24 @@ const ChatContainer = () => {
                                         </div>
                                     </div>
                                 </div>}
-                            </div>
 
+                                {imageSrc &&
+                                <div className="d-flex justify-content-center align-items-start my-1">
+                                    <div className="card shadow-lg position-relative">
+                                        <div className="card-header p-0">
+                                            <img src={imageSrc} alt="" className="uploaded-image" />
+                                        </div>
+                                        <div className="position-absolute end-0 m-1">
+                                            <div className="btn btn-danger rounded-circle" onClick={clearImage}>
+                                                <i className="fa fa-close"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>}
+
+                                </div>
+                            </div>
+                                
                             <div className={`${theme === "light" ? "bg-light" : ""} border-top p-3 rounded-0`}>
                                 <form onSubmit={handleSubmit} className="bg-white rounded-pill">
                                     <div className="d-flex align-items-center form-inputs">
@@ -223,8 +304,8 @@ const ChatContainer = () => {
                                         <label htmlFor="image" className="btn btn-light mx-1 border rounded-pill">
                                             <i className="fa-regular fa-images"></i>
                                         </label>
-                                        <input type="file" id="image" className="d-none" accept="image/*"
-                                            onChange={e => handleUploadImage(e)} />
+                                        <input type="file" id="image" className="d-none" accept="image/*" ref={imageRef}
+                                            onChange={e => handleImageUpload(e)} />
                                         <input type="text" placeholder="what's on your mind!"
                                             className="form-control border-0 rounded-0 py-3"
                                             value={message}
@@ -236,7 +317,7 @@ const ChatContainer = () => {
                                     </div>
                                 </form>
                             </div>
-                            {chats.length === 0 &&
+                            {(chats.length === 0 && !imageSrc) &&
                             <div className="position-absolute top-50 start-50 translate-middle text-center">
                                 <div className="card text-center shadow-lg p-2 w-100">
                                     <div className="card-body py-5 bg-dark text-light">

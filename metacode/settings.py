@@ -29,38 +29,16 @@ HUGGINGFACE_TOKEN = "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"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 
 ALLOWED_HOSTS = ['*']
-
-# Allow specific origins
-CORS_ALLOWED_ORIGINS = [
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS=[
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-
-# If you need to allow credentials (cookies, authorization headers)
 CORS_ALLOW_CREDENTIALS = True
-
-# If you need to allow specific headers
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-# If you need to allow specific HTTP methods
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOW_ALL_ORIGINS = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -69,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "metacode.apps.MetacodeConfig",
     "corsheaders",
 ]
 
@@ -78,6 +57,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # "metacode.middleware.SimpleCorsMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

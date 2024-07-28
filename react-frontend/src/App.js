@@ -2,6 +2,7 @@ import Navbar from './components/navbar';
 import ChatContainer from './components/chatContainer';
 import Login from './components/login';
 import Register from './components/register';
+import NotFound from './components/404page';
 import { useContext } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './components/css/style.css';
@@ -20,7 +21,9 @@ function App() {
         <Routes>
           {auth.user ?
             <>
-              <Route path="*" Component={ChatContainer} />
+              <Route exact path="/" element={<ChatContainer />} />
+              <Route path="/chat/:chatId" element={<ChatContainer />} />
+              <Route path="*" element={<NotFound />} />
             </>
           :
           <>

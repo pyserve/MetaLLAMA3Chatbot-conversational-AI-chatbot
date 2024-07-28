@@ -1,5 +1,8 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../contexts/authContext";
+import { ChatContext } from "../contexts/chatContext";
+import { Link } from 'react-router-dom';
+import axios from "axios";
 
 const Login = () => {
     const [credentials, setCredentials] = useState({
@@ -10,6 +13,7 @@ const Login = () => {
     const [error, setError] = useState({});
     const [disableBtn, setDisableBtn] = useState(false);
     const { loginUser } = useContext(AuthContext);
+    const { createNewSessionId } = useContext(ChatContext);
 
     const handleChange = (e) => {
         const { id, value } = e.target;
@@ -18,7 +22,7 @@ const Login = () => {
           [id]: value
         });
     };
-
+    
     const handleSubmit = async (e) => {
         setError({});
         setDisableBtn(true);
@@ -27,23 +31,20 @@ const Login = () => {
         if(credentials.username.trim() === '') err.username = "Username is required."
         if(credentials.password.trim() === '') err.password = "Password is required."
         setErrors(err);
-        if(Object.keys(err).length === 0){
-            const resp = await fetch("http://127.0.0.1:8000/accounts/login/",{
-                method: "POST",
-                body: JSON.stringify({
-                    data: credentials
-                })
-            });
 
-            if(resp.status === 200){
-                loginUser(await resp.json());
-            }else{
-                setError(await resp.json())
+        if(Object.keys(err).length === 0){
+            try{
+                const resp = await axios.post("http://127.0.0.1:8000/accounts/login/", credentials);
+                loginUser(resp.data);
+                createNewSessionId();
+            }catch(err){
+                setError(err.response.data);
+                setDisableBtn(false);
             }
         }
         setDisableBtn(false);
     }
-
+    
     return (
       <div className="container d-flex justify-content-center align-items-center vh-75">
         <div className="card p-4 shadow-lg" style={{ width: '100%', maxWidth: '400px' }}>
@@ -72,7 +73,7 @@ const Login = () => {
                 </div>
                 <div className="form-group mb-3">
                     <label htmlFor="password">Password</label>
-                    <input type="password" 
+                    <input type="password"
                         className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                         value={credentials.password}
                         onChange={handleChange}
@@ -83,6 +84,15 @@ const Login = () => {
                     {disableBtn && <span className="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>}
                     <span role="status">Login</span>
                 </button>
+                <div className="my-2 d-flex align-items-center">
+                    <hr className="flex-grow-1 mx-2" />
+                    <span className="fs-6">OR</span>
+                    <hr className="flex-grow-1 mx-2" />
+                </div>
+                <div className="my-2 d-flex justify-content-between">
+                    <Link className="nav-link" to={'/register'}>Register</Link>
+                    <Link className="nav-link" to={'/forget-password'}>Forget Password</Link>
+                </div>
             </form>
         </div>
       </div>

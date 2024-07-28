@@ -38,9 +38,10 @@ const Register = () => {
         if(Object.keys(err).length === 0){
             const resp = await fetch("http://127.0.0.1:8000/accounts/register/",{
                 method: "POST",
-                body: JSON.stringify({
-                    data: formData
-                })
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
             });
 
             if(resp.status === 200){

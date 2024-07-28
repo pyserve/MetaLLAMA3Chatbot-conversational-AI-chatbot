@@ -53,8 +53,8 @@
 
 .chat-image{
     width: 250px;
-    height: 250px;
-    object-fit: cover;
+    height: 100%;
+    object-fit: scale-down;
 }
 
 .bg-custom-light{
@@ -67,4 +67,19 @@
     padding: 10px;
     border-radius: 10px 0px 10px 10px;
     color: black;
+}
+.history-item{
+    padding: 8px;
+    border: 1px solid lightgray;
+    border-radius: 10px;
+    margin-top: 3px;
+    margin-left: 3px;
+}
+.history-item:hover{
+    background-color: #d6e0e5;
+    border-color: #d6e0e5;
+    cursor: pointer;
+}
+.history-item-active{
+    background-color: #e2e6ea;
 }

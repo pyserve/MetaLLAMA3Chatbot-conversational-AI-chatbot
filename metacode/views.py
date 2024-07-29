@@ -65,11 +65,30 @@ class ChatView(View):
                     stream=True,
                 ):
                 reply += message.choices[0].delta.content + ""
+            if not chat_session.caption:
+                topic = self.generate_topic(reply)
+                chat_session.caption = topic
+                chat_session.save()
             chat = Chat.objects.create(session=chat_session,role="assistant",content=reply)
             bot_chat = ChatSerializer(chat)
             return JsonResponse({"user": user_chat, "assistant": bot_chat}, status=200)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    def generate_topic(self, chat_text):
+        topic = ''
+        prompt = f"""
+            Model a Topic for the Given reply text in less than 50 words and one sentence maximum. \
+            Just give me topic don't speak extra words, just topic: \n {chat_text}
+        """
+            
+        for message in client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=75,
+                stream=True,
+            ):
+            topic += message.choices[0].delta.content + ""
+        return topic
 
 @method_decorator(csrf_exempt, name="dispatch")
 class AudioView(View):

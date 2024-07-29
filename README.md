@@ -2,6 +2,9 @@
 *LLaMAChat is an advanced conversational AI chatbot built using Meta’s LLaMA (Large Language Model Meta AI). 
 This project aims to leverage the powerful language understanding capabilities of LLaMA to create an intelligent, responsive, and versatile chatbot that can engage in natural, meaningful conversations with users.*
 
+![image](https://github.com/user-attachments/assets/7f343b01-7a22-4ac8-9fc8-5e557f002b00)
+
+
 ## Requirements
 1. Django Web Framework 5.0 or greater
 2. React Js

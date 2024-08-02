@@ -28,6 +28,7 @@ class Chat(models.Model):
     role_options = [("USER", "user"), ("ASSISTANT", "assistant"), ("SYSTEM", "system")]
     role = models.CharField(max_length=25, choices=role_options)
     content = models.TextField()
+    edit_content = models.TextField()
     disliked = models.BooleanField(default=False)
     image = models.ImageField(upload_to="chats/images", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,3 +36,8 @@ class Chat(models.Model):
 
     def __str__(self) -> str:
         return f"{self.session.session_id}"
+
+    def save(self, *args, **kwargs):
+        if not self.id and not self.edit_content: 
+            self.edit_content = self.content
+        super(Chat, self).save(*args, **kwargs)

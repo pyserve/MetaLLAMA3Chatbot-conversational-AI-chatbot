@@ -8,7 +8,7 @@ class ChatSessionAdmin(admin.ModelAdmin):
     list_display = ["session_id", "user", "caption", "created_at", "updated_at"]
 
 class ChatAdmin(admin.ModelAdmin):
-    list_display = ["session", "role", "content", "disliked", "image", "created_at", "updated_at"]
+    list_display = ["session", "role", "content", "edit_content", "disliked", "image", "created_at", "updated_at"]
 
 
 admin.site.register(Profile, ProfileAdmin)

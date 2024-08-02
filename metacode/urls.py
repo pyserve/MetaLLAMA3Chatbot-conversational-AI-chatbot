@@ -15,6 +15,7 @@ urlpatterns = static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
     path("audio/", AudioView.as_view(), name="audio"),
     path("image/", ImageView.as_view(), name="image"),
     path("sessions/<int:uid>", ChatHistory.as_view(), name="get_sessions"),
+    path("sessions/", ChatHistory.as_view(), name="sessions"),
     path("chats/<str:sessionId>", ChatView.as_view(), name="get_chats"),
     path("", ChatView.as_view(), name="chat"),
 ]

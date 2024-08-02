@@ -27,6 +27,7 @@ const ChatContainer = () => {
     const messageRef = useRef(null);
     const [imageSrc, setImageSrc] = useState(null);
     const [modelImage, setModalImage] = useState(null);
+    const [showHistory, setShowHistory] = useState(true);
     const DEEPGRAM_API_KEY = "2ad747b7394a1ceeb64a9ee57c4581099f13d427";
 
     useEffect(() => {
@@ -60,10 +61,16 @@ const ChatContainer = () => {
     }, [message]);
     
     useEffect(() => {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        if(imageRef) {
+        scrollRef.current.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: 'smooth'
+        });
+        if (imageSrc) {
             setTimeout(() => {
-                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                scrollRef.current.scrollTo({
+                    top: scrollRef.current.scrollHeight,
+                    behavior: 'smooth'
+                });
             }, 1000);
         }
     }, [chats, imageSrc]);
@@ -241,8 +248,16 @@ const ChatContainer = () => {
     }
 
     const regenerateResponse = async (e, index) => {
-        let chat = chats.find((c, i) => i===index-1);
-        setChats(chats => chats.slice(0, -2));
+        const results = (index >= 0 && index < chats.length) ? chats.splice(index-1, 2) : null;
+        for(let result of results){
+            let resp = await fetch("http://127.0.0.1:8000/?pk=" + result.pk, {
+                method: "DELETE"
+            });
+            console.log(resp);
+        }
+        let chat = results.at(0);
+        setChats(chats);
+        console.log(chat)
 
         if(chat.image){
             const response = await fetch(chat.image);
@@ -256,23 +271,124 @@ const ChatContainer = () => {
         }
         setMessage(m => chat.content);
         handleSubmit(e, chat.content);
-    } 
+    }
+
+    const escapeHtml = (text) => {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
+    const unescapeHtml = (html) => {
+        return html
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#039;/g, "'");
+    };
+    
+    const formatContent = (text) => {
+        let formattedText = escapeHtml(text);
+        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formattedText = formattedText.replace(/```([\s\S]*?)```/g, 
+            `<div class="bg-secondary text-white border border-white px-3 rounded code-container">
+                <div class="d-flex justify-content-end align-items-center small">
+                    <div class="d-flex align-items-center copy-button" type="button">
+                        <i class="fa-regular fa-copy"></i>
+                        <span class="ms-1">Copy</span>
+                    </div>
+                </div><pre class="m-0 p-0"><code>$1</code></pre>
+            </div>`);
+        formattedText = formattedText.replace(/`([^`]*)`/g, '<code>$1</code>');
+        formattedText = formattedText.replace(/\n/g, '<br>');
+        return formattedText;
+    };
+    
+    $(document).on('click', '.copy-button', function() {
+        let rawCode = $(this).closest(".code-container").find("code").html();
+        let unescapedCode = unescapeHtml(rawCode);
+        let finalCode = unescapedCode.replace(/<br\s*\/?>/g, '\n');
+        navigator.clipboard.writeText(finalCode).then(() => {
+            $(this).removeClass("text-dark").addClass("text-success");
+            $(this).find("i").first().removeClass("fa-regular fa-copy").addClass("fa-solid fa-check");
+            $(this).find("span").first().html("Copied!");
+            setTimeout(() => {
+                $(this).removeClass("text-success").addClass("text-dark");
+                $(this).find("i").first().removeClass("fa-solid fa-check").addClass("fa-regular fa-copy");
+                $(this).find("span").first().html("Copy");
+            }, 2000);
+        }).catch((err) => {
+            console.log(err)
+        });
+    });
+
+    const handleDislikeResponse = async (e, idx) => {
+        let dislikedChat = chats.find((c, i) => i===idx);
+        const resp = await fetch("http://127.0.0.1:8000/?disliked=true", {
+            method: "PUT",
+            body: JSON.stringify({
+                ...dislikedChat,
+                disliked: true,
+            })
+        });
+        console.log(resp)
+        setChats(chats => chats.map((chat, i) => {
+            if(i === idx){
+                return {...chat, disliked: !chat.disliked}
+            }
+            return chat;
+        }))
+    }
+
+    const handleHideEditTextbox = async (e, idx=null, send=null) => {
+        $(e.target).closest(".chat-main-container").first().find(".chat-container").first().removeClass("d-none");
+        $(e.target).closest(".chat-main-container").first().find(".chat-image").first().removeClass("d-none");
+        $(e.target).closest(".chat-main-container").first().find(".chatTextbox").first().addClass("d-none");
+        if(idx !== null && send){
+            const results = (idx >= 0 && idx < chats.length - 1) ? chats.splice(idx, 2) : null;
+            for(let result of results){
+                let resp = await fetch("http://127.0.0.1:8000/?pk=" + result.pk, {
+                    method: "DELETE"
+                });
+                console.log(resp);
+            }
+            setChats(chats);
+            handleSubmit(e, results[0].edit_content);
+        }
+    }
+
+    const handleShowEditTextbox = (e) => {
+        $(e.target).closest(".chat-main-container").first().find(".chat-container").first().addClass("d-none");
+        $(e.target).closest(".chat-main-container").first().find(".chat-image").first().addClass("d-none");
+        $(e.target).closest(".chat-main-container").first().find(".chatTextbox").first().removeClass("d-none");
+        $(e.target).closest(".chat-main-container").first().find("textarea").first().focus();
+    }
 
     return(
-        <div className="container-fluid my-1">
+        <div className="container my-1">
             <div className="row justify-content-center">
-                <div className="col-md-3 pe-0">
-                    <History />
+                <div className={"pe-0 " + (showHistory ? "col-md-3" : "d-none")}>
+                    <History show={showHistory} toggleHistory={() => setShowHistory(h => !h)} />
                 </div>
-                <div className="col-md-9 ps-1">
+                {!showHistory &&
+                <div className={"py-2 col-auto text-end text-" + (theme === "light" ? "dark" : "light")} 
+                    onClick={() => setShowHistory(h => !h)}>
+                    <i type="button" className="fa-solid fa-circle-chevron-right fs-4"></i>    
+                </div>}
+
+                <div className={"ps-1 " + (showHistory ? "col-md-9": "col-md-11")}>
                     <div className="modal fade" ref={modalRef} data-bs-backdrop="static" tabIndex="-1">
-                        <div className="modal-dialog">
+                        <div className="modal-dialog modal-fullscreen">
                             <div className="modal-content">
                                 <div className="modal-header">
                                     <h1 className="modal-title fs-5" id="imagePreviewLabel">Preview Image</h1>
                                     <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <div className="modal-body">
+                                <div className="modal-body position-absolute top-50 start-50 translate-middle">
                                     <img src={modelImage} alt="" className="w-100" />
                                 </div>
                             </div>
@@ -289,7 +405,7 @@ const ChatContainer = () => {
                                         <div key={idx}>
                                             {chat.role === "user" &&
                                             <div className="d-flex justify-content-end p-2 my-1">
-                                                <div className="d-flex justify-content-end align-items-start w-80">
+                                                <div className="d-flex justify-content-end align-items-start w-80 chat-main-container">
                                                     <div className="me-2">
                                                         <div className="d-flex justify-content-end">
                                                             {(chat.image && chat.pk) &&
@@ -303,8 +419,41 @@ const ChatContainer = () => {
                                                                 type="button" onClick={() => openImagePreview(idx)}></img>
                                                             }     
                                                         </div>  
-                                                        <div className={`bg-custom-${theme}`} style={{whiteSpace: "pre-wrap"}}>
-                                                            {chat.content}
+                                                        <div className="d-flex align-items-start chat-container">
+                                                            <div className="me-2 edit-chat" onClick={e => handleShowEditTextbox(e)}>
+                                                                <span className="btn btn-light rounded-circle">
+                                                                    <i className="fa-solid fa-pencil small"></i>
+                                                                </span>
+                                                            </div>
+                                                            <div className={`w-100 bg-custom-${theme}`} 
+                                                                style={{whiteSpace: "pre-wrap"}}>
+                                                                {chat.content}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-100 chatTextbox d-none">
+                                                        <textarea className="form-control rounded-4 bg-light"
+                                                            rows={4}
+                                                            onFocus={e => {
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = `${e.target.scrollHeight}px`;
+                                                            }}
+                                                            value={chat.edit_content || ''}
+                                                            onChange={e => {
+                                                                setChats(chats => chats.map((chat, index) => {
+                                                                    if(idx === index){
+                                                                        return {...chat, edit_content: e.target.value}
+                                                                    }
+                                                                    return chat;
+                                                                }))
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = `${e.target.scrollHeight}px`;
+                                                            }}></textarea>
+                                                        <div className="d-flex justify-content-end">
+                                                            <button className="m-1 btn btn-sm btn-light"
+                                                                onClick={e => handleHideEditTextbox(e)}>Cancel</button>
+                                                            <button className="m-1 btn btn-sm btn-dark"
+                                                                onClick={e => handleHideEditTextbox(e, idx, true)}>Send</button>
                                                         </div>
                                                     </div>
                                                     <span className="ms-1 fs-3">
@@ -322,9 +471,9 @@ const ChatContainer = () => {
                                                         <img src="/img/beaver.jpeg" alt="" 
                                                             className="reply-image rounded-circle" />
                                                     </span>
-                                                    <div className="ms-2">
-                                                        <span style={{whiteSpace: "pre-wrap"}}>
-                                                            {chat.content}
+                                                    <div className="ms-2 overflow-auto" style={{maxWidth: '100vw'}}>
+                                                        <span 
+                                                            dangerouslySetInnerHTML={{__html: formatContent(chat.content)}}>
                                                         </span>
                                                         <div className="my-1">
                                                             <span className="me-2">
@@ -349,15 +498,8 @@ const ChatContainer = () => {
                                                                     }}></i>
                                                             </span>
                                                             <span className="mx-2">
-                                                                <i type="button" className={"text-muted fa-"+ (chat.dislike ? "solid" : "regular") +" fa-thumbs-down"}
-                                                                    onClick={e => {
-                                                                        setChats(chats => chats.map((chat, i) => {
-                                                                            if(i === idx){
-                                                                                return {...chat, dislike: !chat.dislike}
-                                                                            }
-                                                                            return chat;
-                                                                        }))
-                                                                    }}></i>
+                                                                <i type="button" className={"text-muted fa-"+ (chat.disliked ? "solid" : "regular") +" fa-thumbs-down"}
+                                                                    onClick={e => handleDislikeResponse(e, idx)}></i>
                                                             </span>
                                                             {idx === chats.length - 1 &&
                                                             <span className="ms-2">

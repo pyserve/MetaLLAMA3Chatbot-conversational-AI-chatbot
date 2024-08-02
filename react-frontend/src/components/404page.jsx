@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../contexts/authContext';
 
 const NotFound = () => {
+    const { theme } = useContext(AuthContext);
     return (
-        <div className="d-flex flex-column justify-content-center align-items-center vh-75">
+        <div className={"d-flex flex-column justify-content-center align-items-center vh-75 text-"+
+            (theme === "light" ? "dark": "light")
+        }>
             <div className="text-center">
                 <h1 className="display-1 text-danger">404</h1>
                 <h2 className="mb-4">Oops! Page Not Found</h2>

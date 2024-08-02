@@ -32,6 +32,31 @@ class ChatHistory(View):
             data = [ChatSessionSerializer(session) for session in sessions]
             return JsonResponse({"data": data}, status=200)
         return JsonResponse({"data": []}, status=200)
+    
+    def delete(self, request):
+        id = request.GET.get("pk")
+        if id is not None:
+            chat_session = ChatSession.objects.get(pk=id)
+            user = chat_session.user
+            chat_session.delete()
+            sessions = ChatSession.objects.filter(user=user).order_by("-created_at")
+            data = [ChatSessionSerializer(session) for session in sessions]
+            return JsonResponse({"data": data}, status=200)
+        return JsonResponse({"error": "Not Found", "message": "Record ID not provided."}, status=401)
+
+    def put(self, request):
+        rename = request.GET.get("caption")
+        if rename == "true":
+            data = json.loads(request.body)
+            new_caption = data['caption']
+            session_id = data["sessionId"]
+            session = ChatSession.objects.filter(session_id=session_id).first()
+            if session is not None:
+                session.caption = new_caption
+                session.save()
+                data = ChatSessionSerializer(session)
+                return JsonResponse({"data": data, "message": "Record updated."}, status=200)
+        return JsonResponse({"data": {}, "message": "Record updated."}, status=200)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChatView(View):
@@ -89,6 +114,24 @@ class ChatView(View):
             ):
             topic += message.choices[0].delta.content + ""
         return topic
+    
+    def delete(self, request):
+        id = request.GET.get("pk")
+        if id is not None:
+            Chat.objects.get(pk=id).delete()
+            return JsonResponse({"message": f"Record ID ( {id} ) deleted successfully."}, status=200)
+        return JsonResponse({"error": "Record ID not present in payload."}, status=500)
+
+    def put(self, request):
+        disliked_action = request.GET.get("disliked")
+        data = json.loads(request.body)
+        chat = None
+        if disliked_action == "true":
+            chat = Chat.objects.get(pk=data["pk"])
+            chat.disliked = not (chat.disliked)
+            chat.save()
+            chat = ChatSerializer(chat)
+        return JsonResponse({"data": chat, "message": f"Record ID ({data['pk']}) pdated successfully."}, status=200)
 
 @method_decorator(csrf_exempt, name="dispatch")
 class AudioView(View):

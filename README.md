@@ -4,6 +4,8 @@ This project aims to leverage the powerful language understanding capabilities o
 
 ![image](https://github.com/user-attachments/assets/7f343b01-7a22-4ac8-9fc8-5e557f002b00)
 
+![image](https://github.com/user-attachments/assets/e1137c86-02ef-47a6-8b28-4d34b741ff43)
+
 
 ## Requirements
 1. Django Web Framework 5.0 or greater

@@ -47,8 +47,14 @@ const ChatContainer = () => {
         if(auth.user){
             setInitialPrompt({
                 role: "system",
-                content: "The user chatting with you is " 
-                + (auth.user.first_name ? auth.user.first_name : auth.user.email)
+                content: `
+                As a system memory or initial prompt, You are a Beaver Chatbot created by NextAI company. 
+                Act like a chatbot model. Today is 
+                ${new Date().toLocaleDateString() + new Date().toLocaleTimeString()} 
+                The user chatting with you is 
+                ${(auth.user.first_name ? auth.user.first_name : auth.user.email)}.
+                AI LLAMA3 model developed by Meta Facebook.
+                `
             })
         }
     }, [auth]);
@@ -86,7 +92,6 @@ const ChatContainer = () => {
         setMessage('');
         setDisableBtn(true);
         setChats(chats => [...chats, query]);
-  
         if(query.image){
             const formData = new FormData();
             formData.append('image', imageRef.current.files[0]);
@@ -111,7 +116,7 @@ const ChatContainer = () => {
             }
         }
         else{
-            const resp = await fetch("http://127.0.0.1:8000", {
+            const resp = await fetch("http://127.0.0.1:8000/", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -258,7 +263,6 @@ const ChatContainer = () => {
         }
         let chat = results.at(0);
         setChats(chats);
-        console.log(chat)
 
         if(chat.image){
             const response = await fetch(chat.image);
@@ -270,7 +274,6 @@ const ChatContainer = () => {
             dataTransfer.items.add(file);
             fileInput.files = dataTransfer.files;
         }
-        setMessage(m => chat.content);
         handleSubmit(e, chat.content);
     }
 
@@ -474,9 +477,9 @@ const ChatContainer = () => {
                                                         <span 
                                                             dangerouslySetInnerHTML={{__html: formatContent(chat.content)}}>
                                                         </span>
-                                                        <div className="my-1">
+                                                        <div className={"my-1 text-opacity-75 text-" + (theme === "light" ? "dark" : "light") }>
                                                             <span className="me-2">
-                                                                <i type="button" className="text-muted fa-regular fa-clipboard"
+                                                                <i type="button" className="fa-regular fa-clipboard"
                                                                     onClick={e => {
                                                                         $(e.target).removeClass("fa-regular fa-clipboard").addClass("fa-solid fa-check");
                                                                         navigator.clipboard.writeText(chat.content).then(() => {
@@ -490,19 +493,19 @@ const ChatContainer = () => {
                                                                     }}></i>
                                                             </span>
                                                             <span className="mx-2">
-                                                                <i type="button" className="text-muted fa-solid fa-volume-off"
+                                                                <i type="button" className="fa-solid fa-volume-off"
                                                                     onClick={e => {
                                                                         $(e.target).removeClass("fa-solid fa-volume-off").addClass("fa-solid fa-volume-high");
                                                                         textToSpeech(e, chat.content);
                                                                     }}></i>
                                                             </span>
                                                             <span className="mx-2">
-                                                                <i type="button" className={"text-muted fa-"+ (chat.disliked ? "solid" : "regular") +" fa-thumbs-down"}
+                                                                <i type="button" className={"fa-"+ (chat.disliked ? "solid" : "regular") +" fa-thumbs-down"}
                                                                     onClick={e => handleDislikeResponse(e, idx)}></i>
                                                             </span>
                                                             {idx === chats.length - 1 &&
                                                             <span className="ms-2">
-                                                                <i type="button" className="text-muted fa-solid fa-arrows-rotate"
+                                                                <i type="button" className="fa-solid fa-arrows-rotate"
                                                                     onClick={e => {
                                                                         regenerateResponse(e, idx);
                                                                     }}></i>

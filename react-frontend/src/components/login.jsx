@@ -1,10 +1,11 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../contexts/authContext";
 import { ChatContext } from "../contexts/chatContext";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
 
 const Login = () => {
+    const navigate = useNavigate()
     const [credentials, setCredentials] = useState({
         username: '', 
         password: '',
@@ -36,7 +37,8 @@ const Login = () => {
             try{
                 const resp = await axios.post("http://127.0.0.1:8000/accounts/login/", credentials);
                 loginUser(resp.data);
-                createNewSessionId();
+                const newSessionId = createNewSessionId();
+                navigate(`/chat/${newSessionId}`);
             }catch(err){
                 setError(err.response.data);
                 setDisableBtn(false);

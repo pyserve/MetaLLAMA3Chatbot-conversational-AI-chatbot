@@ -7,17 +7,34 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate, login, logout
 from .serializers import UserSerializer, ChatSerializer, ChatSessionSerializer
 from huggingface_hub import InferenceClient
-from .settings import HUGGINGFACE_TOKEN
+from .settings import HUGGINGFACE_TOKEN,GROK_API_KEY
 from .models import ChatSession, Chat
 from django.middleware.csrf import get_token
 import base64
 import json
 import requests
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import FlashrankRerank
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Qdrant
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
+from llama_parse import LlamaParse
+import nltk   
+
+nltk.download('all') 
+
 
 model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
 image_model_name = "Salesforce/blip-image-captioning-base"
 client = InferenceClient(model=model_name, token=HUGGINGFACE_TOKEN)
 vqa_client = InferenceClient(model=image_model_name, token=HUGGINGFACE_TOKEN)
+document_path = r".\documents.md"
+
 
 class CSRFView(View):
     def get(self, request):
@@ -60,46 +77,99 @@ class ChatHistory(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChatView(View):
-    def get(self, request, sessionId=None):
-        if sessionId:
-            session = ChatSession.objects.filter(session_id=sessionId).first()
-            if session:
-                chats = Chat.objects.filter(session=session)
-                data = [ChatSerializer(chat) for chat in chats]
-                return JsonResponse({"data": data}, status=200)
-            return JsonResponse({"data": []}, status=200)
-        return JsonResponse({'message': 'Protected resource accessed'}, status=200)
+    # Class attributes to store pre-initialized components
+    compression_retriever = None
+    llm = None
     
+    @classmethod
+    def initialize_components(cls):
+        if cls.compression_retriever is None or cls.llm is None:
+            # Perform initialization once
+            loader = UnstructuredMarkdownLoader(document_path)
+            loaded_documents = loader.load()
+
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=2048, chunk_overlap=128)
+            docs = text_splitter.split_documents(loaded_documents)
+
+            embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+            qdrant = Qdrant.from_documents(
+                docs,
+                embeddings,
+                # location=":memory:",
+                path=".",
+                collection_name="document_embeddings",
+            )
+
+            retriever = qdrant.as_retriever(search_kwargs={"k": 5})
+            compressor = FlashrankRerank(model="ms-marco-MiniLM-L-12-v2")
+            cls.compression_retriever = ContextualCompressionRetriever(
+                base_compressor=compressor, base_retriever=retriever
+            )
+
+            cls.llm = ChatGroq(temperature=0, model_name="llama3-70b-8192",api_key=GROK_API_KEY)
+
+    def invoke_query(self, query):
+        # Ensure components are initialized
+        self.initialize_components()
+
+        prompt_template = """
+        Use the following pieces of information to answer the user's question.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+        Context: {context}
+        Question: {question}
+
+        Answer the question and provide additional helpful information,
+        based on the pieces of information, if applicable. Be succinct.
+
+        Responses should be properly formatted to be easily read.
+        """
+
+        prompt = PromptTemplate(
+            template=prompt_template, input_variables=["context", "question"]
+        )
+
+        qa = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=self.compression_retriever,
+            return_source_documents=True,
+            chain_type_kwargs={"prompt": prompt, "verbose": True},
+        )
+
+        response = qa.invoke(query)
+        return response['result']  # assuming 'output_text' is the key for the response text
+
     def post(self, request):
         try:
             data = json.loads(request.body)
             messages = data.get('messages', '')
             uid = data.get('uid', '')
             sessionId = data.get('sessionId', '')
-            chat_session = ChatSession.objects.filter(session_id = sessionId).first()
+            chat_session = ChatSession.objects.filter(session_id=sessionId).first()
+
             if not chat_session:
                 user = User.objects.get(pk=uid)
-                chat_session = ChatSession.objects.create(user=user, session_id=sessionId,)
+                chat_session = ChatSession.objects.create(user=user, session_id=sessionId)
 
-            reply = ''
-            chat = Chat.objects.create(session=chat_session,role="user",content=messages[-1]['content'])
-            user_chat = ChatSerializer(chat)
-            for message in client.chat_completion(
-                    messages=messages,
-                    max_tokens=1024,
-                    stream=True,
-                ):
-                reply += message.choices[0].delta.content + ""
+            query = messages[-1]['content']
+            reply = self.invoke_query(query)
+
             if not chat_session.caption:
                 topic = self.generate_topic(reply)
                 chat_session.caption = topic
                 chat_session.save()
-            chat = Chat.objects.create(session=chat_session,role="assistant",content=reply)
+
+            chat = Chat.objects.create(session=chat_session, role="user", content=query)
+            user_chat = ChatSerializer(chat)
+
+            chat = Chat.objects.create(session=chat_session, role="assistant", content=reply)
             bot_chat = ChatSerializer(chat)
+
             return JsonResponse({"user": user_chat, "assistant": bot_chat}, status=200)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-    
+
     def generate_topic(self, chat_text):
         topic = ''
         prompt = f"""
@@ -114,7 +184,7 @@ class ChatView(View):
             ):
             topic += message.choices[0].delta.content + ""
         return topic
-    
+
     def delete(self, request):
         id = request.GET.get("pk")
         if id is not None:

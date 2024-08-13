@@ -13,6 +13,7 @@ const ChatContainer = () => {
     const { auth, theme } = useContext(AuthContext);
     const { chats, setChats, sessionId } = useContext(ChatContext);
     const [message, setMessage] = useState('');
+    const [editText, setEditText] = useState('');
     const scrollRef = useRef(null);
     const [disableBtn, setDisableBtn] = useState(true);
     const [initialPrompt, setInitialPrompt] = useState({});
@@ -313,11 +314,11 @@ const ChatContainer = () => {
         let unescapedCode = unescapeHtml(rawCode);
         let finalCode = unescapedCode.replace(/<br\s*\/?>/g, '\n');
         navigator.clipboard.writeText(finalCode).then(() => {
-            $(this).removeClass("text-dark").addClass("text-success");
+            $(this).removeClass("text-white").addClass("text-warning");
             $(this).find("i").first().removeClass("fa-regular fa-copy").addClass("fa-solid fa-check");
             $(this).find("span").first().html("Copied!");
             setTimeout(() => {
-                $(this).removeClass("text-success").addClass("text-dark");
+                $(this).removeClass("text-warning").addClass("text-white");
                 $(this).find("i").first().removeClass("fa-solid fa-check").addClass("fa-regular fa-copy");
                 $(this).find("span").first().html("Copy");
             }, 2000);
@@ -357,11 +358,14 @@ const ChatContainer = () => {
                 console.log(resp);
             }
             setChats(chats);
-            handleSubmit(e, results[0].edit_content);
+            handleSubmit(e, editText);
+            setEditText("");
         }
     }
 
-    const handleShowEditTextbox = (e) => {
+    const handleShowEditTextbox = (e, index) => {
+        const filterChat = chats.find((c, i) => i === index)
+        if(filterChat) setEditText(filterChat.content);
         $(e.target).closest(".chat-main-container").first().find(".chat-container").first().addClass("d-none");
         $(e.target).closest(".chat-main-container").first().find(".chat-image").first().addClass("d-none");
         $(e.target).closest(".chat-main-container").first().find(".chatTextbox").first().removeClass("d-none");
@@ -420,7 +424,7 @@ const ChatContainer = () => {
                                                             }     
                                                         </div>  
                                                         <div className="d-flex align-items-start chat-container">
-                                                            <div className="me-2 edit-chat" onClick={e => handleShowEditTextbox(e)}>
+                                                            <div className="me-2 edit-chat" onClick={e => handleShowEditTextbox(e, idx)}>
                                                                 <span className="btn btn-light rounded-circle">
                                                                     <i className="fa-solid fa-pencil small"></i>
                                                                 </span>
@@ -438,14 +442,9 @@ const ChatContainer = () => {
                                                                 e.target.style.height = 'auto';
                                                                 e.target.style.height = `${e.target.scrollHeight}px`;
                                                             }}
-                                                            value={chat.edit_content || ''}
+                                                            value={editText}
                                                             onChange={e => {
-                                                                setChats(chats => chats.map((chat, index) => {
-                                                                    if(idx === index){
-                                                                        return {...chat, edit_content: e.target.value}
-                                                                    }
-                                                                    return chat;
-                                                                }))
+                                                                setEditText(e.target.value);
                                                                 e.target.style.height = 'auto';
                                                                 e.target.style.height = `${e.target.scrollHeight}px`;
                                                             }}></textarea>

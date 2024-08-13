@@ -28,6 +28,7 @@ const ChatContextProvider = ({children}) => {
         sessionStorage.setItem('sessionId', newSessionId);
         setSessionId(newSessionId);
         setChats([]);
+        return newSessionId;
     };
 
     const changeSessionId = (newSessionId) => {

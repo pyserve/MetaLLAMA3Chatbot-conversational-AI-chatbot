@@ -6,6 +6,7 @@ import History from "./history";
 import { Modal } from 'bootstrap';
 import 'bootstrap/dist/js/bootstrap';
 import $ from 'jquery';
+import { API_URL } from "../constants";
 
 const ChatContainer = () => {
     const navigate = useNavigate();
@@ -35,7 +36,7 @@ const ChatContainer = () => {
         if(sessionId){
             navigate(`/chat/${sessionId}`);
             const fetchChats = async () => {
-                const resp = await fetch("http://127.0.0.1:8000/chats/" + sessionId);
+                const resp = await fetch(API_URL + "chats/" + sessionId);
                 const result = await resp.json();
                 setChats(result.data);
             }
@@ -99,7 +100,7 @@ const ChatContainer = () => {
             formData.append("uid", auth.user.pk);
             formData.append("sessionId", sessionId);
             clearImage();
-            const resp = await fetch("http://127.0.0.1:8000/image/",{
+            const resp = await fetch(API_URL + "image/",{
                 method: "POST",
                 body: formData
             });
@@ -116,7 +117,7 @@ const ChatContainer = () => {
             }
         }
         else{
-            const resp = await fetch("http://127.0.0.1:8000/", {
+            const resp = await fetch(API_URL + "", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -223,7 +224,7 @@ const ChatContainer = () => {
     const openImagePreview = (index) => {
         const result = chats.find((c, i) => i === index);
         if(result.pk){
-            setModalImage("http://127.0.0.1:8000/media/" + result.image);
+            setModalImage(API_URL + "media/" + result.image);
         }else{
             setModalImage(result.image);
         }
@@ -256,7 +257,7 @@ const ChatContainer = () => {
     const regenerateResponse = async (e, index) => {
         const results = (index >= 0 && index < chats.length) ? chats.splice(index-1, 2) : null;
         for(let result of results){
-            let resp = await fetch("http://127.0.0.1:8000/?pk=" + result.pk, {
+            let resp = await fetch(API_URL + "?pk=" + result.pk, {
                 method: "DELETE"
             });
             console.log(resp);
@@ -332,7 +333,7 @@ const ChatContainer = () => {
 
     const handleDislikeResponse = async (e, idx) => {
         let dislikedChat = chats.find((c, i) => i===idx);
-        const resp = await fetch("http://127.0.0.1:8000/?disliked=true", {
+        const resp = await fetch(API_URL + "?disliked=true", {
             method: "PUT",
             body: JSON.stringify({
                 ...dislikedChat,
@@ -355,7 +356,7 @@ const ChatContainer = () => {
         if(idx !== null && send){
             const results = (idx >= 0 && idx < chats.length - 1) ? chats.splice(idx, 2) : null;
             for(let result of results){
-                let resp = await fetch("http://127.0.0.1:8000/?pk=" + result.pk, {
+                let resp = await fetch(API_URL + "?pk=" + result.pk, {
                     method: "DELETE"
                 });
                 console.log(resp);
@@ -416,7 +417,7 @@ const ChatContainer = () => {
                                                     <div className="me-2">
                                                         <div className="d-flex justify-content-end">
                                                             {(chat.image && chat.pk) &&
-                                                            <img src={chat.image ? ("http://127.0.0.1:8000/media/" + chat.image): null} 
+                                                            <img src={chat.image ? (API_URL + "media/" + chat.image): null} 
                                                                 alt="" className="chat-image rounded py-1" 
                                                                 type="button" onClick={() => openImagePreview(idx)}></img>
                                                             }

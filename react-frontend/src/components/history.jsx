@@ -3,6 +3,7 @@ import { AuthContext } from "../contexts/authContext";
 import { ChatContext } from "../contexts/chatContext";
 import { Modal } from 'bootstrap';
 import * as $ from 'jquery';
+import { API_URL } from "../constants";
 
 const History = ({ show, toggleHistory }) => {
     const { auth, theme } = useContext(AuthContext);
@@ -14,7 +15,7 @@ const History = ({ show, toggleHistory }) => {
     useEffect(() => {
         if(chats.length <= 2){
             const fetchSessions = async () => {
-                const resp = await fetch("http://127.0.0.1:8000/sessions/" + auth.user.pk);
+                const resp = await fetch(API_URL + "sessions/" + auth.user.pk);
                 const results = await resp.json();
                 setChatSessions(results.data);
             }
@@ -45,7 +46,7 @@ const History = ({ show, toggleHistory }) => {
     const handleDeleteChat = async (session) => {
         const resp = await confirmDelete();
         if(resp){
-            const res = await fetch("http://127.0.0.1:8000/sessions/?pk=" + session.pk, {
+            const res = await fetch(API_URL + "sessions/?pk=" + session.pk, {
                 method: "DELETE"
             });
             if(res.status === 200){
@@ -67,7 +68,7 @@ const History = ({ show, toggleHistory }) => {
 
     const handleRenameSave = async () => {
         const index = parseInt($("#modal-chat-id-input").val());
-        const res = await fetch("http://127.0.0.1:8000/sessions/?caption=true", {
+        const res = await fetch(API_URL + "sessions/?caption=true", {
             method: "PUT",
             body: JSON.stringify({
                 caption: renameText,

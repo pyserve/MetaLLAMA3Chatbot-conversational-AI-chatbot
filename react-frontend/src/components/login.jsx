@@ -3,6 +3,7 @@ import { AuthContext } from "../contexts/authContext";
 import { ChatContext } from "../contexts/chatContext";
 import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
+import { API_URL } from "../constants";
 
 const Login = () => {
     const navigate = useNavigate()
@@ -35,7 +36,7 @@ const Login = () => {
 
         if(Object.keys(err).length === 0){
             try{
-                const resp = await axios.post("http://127.0.0.1:8000/accounts/login/", credentials);
+                const resp = await axios.post(API_URL + "accounts/login/", credentials);
                 loginUser(resp.data);
                 const newSessionId = createNewSessionId();
                 navigate(`/chat/${newSessionId}`);

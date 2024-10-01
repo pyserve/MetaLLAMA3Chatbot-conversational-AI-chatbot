@@ -15,6 +15,7 @@ import json
 import requests
 
 model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+# model_name = "meta-llama/Llama-3.1-8B-Instruct"
 image_model_name = "Salesforce/blip-image-captioning-base"
 client = InferenceClient(model=model_name, token=HUGGINGFACE_TOKEN)
 vqa_client = InferenceClient(model=image_model_name, token=HUGGINGFACE_TOKEN)
@@ -82,21 +83,20 @@ class ChatView(View):
                 chat_session = ChatSession.objects.create(user=user, session_id=sessionId,)
 
             reply = ''
-            chat = Chat.objects.create(session=chat_session,role="user",content=messages[-1]['content'])
-            user_chat = ChatSerializer(chat)
-            for message in client.chat_completion(
-                    messages=messages,
-                    max_tokens=1024,
-                    stream=True,
-                ):
-                reply += message.choices[0].delta.content + ""
-            if not chat_session.caption:
-                topic = self.generate_topic(reply)
-                chat_session.caption = topic
-                chat_session.save()
-            chat = Chat.objects.create(session=chat_session,role="assistant",content=reply)
-            bot_chat = ChatSerializer(chat)
-            return JsonResponse({"user": user_chat, "assistant": bot_chat}, status=200)
+            try:
+                chat = Chat.objects.create(session=chat_session,role="user",content=messages[-1]['content'])
+                user_chat = ChatSerializer(chat)
+                response = client.chat_completion(messages=messages, max_tokens=1024)
+                reply = response.choices[0].message.content
+                if not chat_session.caption:
+                    topic = self.generate_topic(reply)
+                    chat_session.caption = topic
+                    chat_session.save()
+                chat = Chat.objects.create(session=chat_session,role="assistant",content=reply)
+                bot_chat = ChatSerializer(chat)
+                return JsonResponse({"user": user_chat, "assistant": bot_chat}, status=200)
+            except Exception as e:
+                return JsonResponse({"error": e}, status=400)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
     
@@ -106,13 +106,11 @@ class ChatView(View):
             Model a Topic for the Given reply text in less than 50 words and one sentence maximum. \
             Just give me topic don't speak extra words, just topic: \n {chat_text}
         """
-            
-        for message in client.chat_completion(
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=75,
-                stream=True,
-            ):
-            topic += message.choices[0].delta.content + ""
+        response = client.chat_completion(
+            messages=[{"role": "user", "content": prompt}], 
+            max_tokens=1024
+        )
+        topic = response.choices[0].message.content
         return topic
     
     def delete(self, request):
